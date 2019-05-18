@@ -98,9 +98,9 @@ methods:
                        row(s) and/or column(s).
     log             -- Same as print(Table.copy(row, column)).
 
-###Class
+### Class
 
-__init__
+_init_
 
     Keyword arguments:
     data        -- Initial data. Needs to be an iterable object of
@@ -124,17 +124,17 @@ __init__
     col_sep     -- Seperator between columns (default '|').
 
 
-__repr__
+_repr_
 
     Representation of this object. Nr of columns and rows are added.
 
-__str__
+_str_
 
     A performance heavy operation. Returns a string representation,
     of the current table. Trunks values as needed (set by max_width).
     Also adds seperators specified by head_sep, row_sep and col_sep.
 
-__len__
+_len_
 
     Returns the total width of the table when printed
 
@@ -178,8 +178,6 @@ add_head()
     index   -- Index from where the data starts replacing the current head.
                (default None: end of head)
     data    -- List containing the headings (default None).
-    fill    -- Empty heading fill for excesive columns (default None).
-               Note: if none given, the Table fill param is used!
 
 add_row()
 
@@ -189,9 +187,6 @@ add_row()
     data    -- List containing cell data (default None)
     index   -- The position of the newly added row starting at 0.
                (default None: last row)
-    fill    -- The filling too use when creating more cells to fit
-               the Table size (default None)
-               Noterow: If none given, the Table fill param is used!
     
 add_column()
 
@@ -202,9 +197,6 @@ add_column()
     head    -- The table heading of this column (default None).
     index   -- The position of the newly added column starting at 0
                (default None: last column).
-    fill    -- The filling too use when creating more cells to fit
-               the Table size (default None).
-               Note: If none given, the Table fill param is used!
     
 remove_head()
 
@@ -264,7 +256,6 @@ log()
     
 
 ## ToDo
-- Re-setting fill should work on all `empty` cells
 - Except any data=... on add_*(), but convert too list if not a list?
 - Make logging more efficient...
 - More/better testing
