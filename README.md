@@ -37,7 +37,7 @@ JUV | 0.12 | 104       '
 ---------------------------------------------
 This final row is yet another Table!
 ```
-### Goodies
+## Goodies
 + Nested tables are allowed!
 + Newlines in a cell are allowed.
 + Tries to break a long line into multiple lines before printing.
@@ -45,7 +45,7 @@ This final row is yet another Table!
 + Piping the output in terminal is possible, e.g. ... | head -10.
 + Well documented, couple of testcases added.
 
-### Usages
+## Usages
 1. Create a new table object:
 ```mytable = Table()```
 2. Add rows 
@@ -69,12 +69,14 @@ A    / row   / with  / five    / columns / A
      /       /       /         /         / rows
 ```
 
-### Module info
+## Module info
 Table()
+
 Construct tables ready for printing data into nice table-like output.
 Nested tables, and cells containing multiple lines, are allowed!
 
-#####Object
+### Object
+
 properties:
 
     max_width       -- Maxmum width of the Table.
@@ -96,7 +98,7 @@ methods:
                        row(s) and/or column(s).
     log             -- Same as print(Table.copy(row, column)).
 
-#####Class
+###Class
 
 __init__
 
@@ -261,20 +263,20 @@ log()
     Note: index start at 0!
     
 
-### ToDo
+## ToDo
 - Re-setting fill should work on all `empty` cells
 - Except any data=... on add_*(), but convert too list if not a list?
 - Make logging more efficient...
 - More/better testing
 
-### Wishlist
+## Wishlist
 - More chars for seperators?
 - Add sort method?
 - Cells containing functions, for calculating sum, product etc.. of range of
   Cells
 - Add max height?
 
-### Notes
+## Notes
 - When setting max_width Table tries too shrink largest column first.
   This isn't always desirable, especially with nested tables of different
   sizes.
