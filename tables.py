@@ -166,6 +166,11 @@ class Table:
         row_count       -- Returns the numbers of rows in the Table as integer.
         column_count    -- Returns the numbers of columns in the Table as
                            an integer.
+        cells           -- Iterable object, returning the cells from the table.
+        rows            -- Iterable object, returning the rows from the table.
+        columns         -- Iterable object, returning the columns from the
+                           table.
+        head            -- Iterable object, returning the head from the table.
     methods:
         add_head        -- Add a list of column headings to the table.
         add_row         -- Add a list of row data to the table.
@@ -306,9 +311,8 @@ class Table:
         if value is None:
             value = ''
         self._fill = value
-        for row in self._data:
-            for cell in row:
-                cell.fill = value
+        for cell in self.cells:
+            cell.fill = value
 
     @property
     def row_count(self):
@@ -332,9 +336,9 @@ class Table:
         M = []
         # Add head when calculating max-widths?
         if self._head is not None:
-            z = zip(self._head, *self._data)
+            z = zip(self.head, *self.rows)
         else:
-            z = zip(*self._data)
+            z = self.columns
         for column in z:
             # One space extra...
             mx = max(len(c) + len(self.col_sep) - 1 for c in column)
@@ -356,6 +360,27 @@ class Table:
                 M[i] -= 1
         return M
 
+    @property
+    def cells(self):
+        for row in self._data:
+            for cell in row:
+                yield cell
+
+    @property
+    def rows(self):
+        for row in self._data:
+            yield row
+
+    @property
+    def columns(self):
+        for column in zip(*self._data):
+            yield column
+
+    @property
+    def head(self):
+        for cell in self._head:
+            yield cell
+
     def __repr__(self):
         """Representation of this object. Nr of columns and rows are added."""
         return (f'<Table object: {self.row_count} rows'
@@ -375,7 +400,7 @@ class Table:
                            for j in self.column_widths]
                 string += self._convert_row_to_string(sep_row, self.head_sep)
         rows = []
-        for row in self._data:
+        for row in self.rows:
             rows.append(self._convert_row_to_string(row, self.col_sep))
         if self.row_sep is not None:
             sep_row = [_Cell(self.row_sep[1:] * j)
@@ -425,13 +450,13 @@ class Table:
                 raise TypeError(f"data={kwargs['data']} not supported.")
             add_func(self, **kwargs)
             if self._head is None:
-                m = max(len(r) for r in self._data)
-                for row in self._data:
+                m = max(len(r) for r in self.rows)
+                for row in self.rows:
                     while len(row) < m:
                         row.append(_Cell(None))
             else:
-                m = max(len(r) for r in [self._head, *self._data])
-                for row in [self._head, *self._data]:
+                m = max(len(r) for r in [self._head, *self.rows])
+                for row in [self._head, *self.rows]:
                     while len(row) < m:
                         row.append(_Cell(None))
         return wrap_add
@@ -599,12 +624,12 @@ class Table:
             index = [self.column_count - 1]
         if removehead:
             for r, i in enumerate(index):
-                self._data = [row[:i-r] + row[i-r+1:] for row in self._data]
+                self._data = [row[:i-r] + row[i-r+1:] for row in self.rows]
                 if self._head is not None:
                     self._head = self._head[:i-r] + self._head[i-r+1:]
         else:
             for i in index:
-                for row in self._data:
+                for row in self.rows:
                     row[i] = _Cell(None)
 
     def copy(self, row=None, column=None):
@@ -620,6 +645,10 @@ class Table:
                    (default None).
         Note: index start at 0!
         """
+        if isinstance(row, list):
+            row = set(row)
+        if isinstance(column, list):
+            column = set(column)
         if isinstance(row, int):
             row = [row]
         if isinstance(column, int):
@@ -636,11 +665,11 @@ class Table:
                 col_sep=self.col_sep[:1]
         )
         if row is None and column is None:
-            T._data = [[c.copy() for c in row] for row in self._data]
-            T._head = [h.copy() for h in self._head]
+            T._data = [[c.copy() for c in row] for row in self.rows]
+            T._head = [h.copy() for h in self.head]
         elif row is None:
             for c in column:
-                col = [r[c].copy() for r in self._data]
+                col = [r[c].copy() for r in self.rows]
                 head = None
                 if self._head is not None:
                     head = self._head[c].copy()
@@ -649,7 +678,7 @@ class Table:
             for r in row:
                 T.add_row(data=[c.copy() for c in self._data[r]])
             if self._head is not None:
-                T.add_head(data=[c.copy() for c in self._head])
+                T.add_head(data=[c.copy() for c in self.head])
         else:
             T._data = []
             for r in row:
@@ -692,12 +721,11 @@ class Table:
 if __name__ == '__main__':
     print('This module is supposed to be imported!')
 # TODO:
-# - Resetting fill should work on all `empty` cells
 # - Except any data=... on add_*(), but convert too list if not a list?
+# - Make logging more efficient...
 # Wishlist:
 # - Nested tables side by side won't line row by row... This leaves room for
 #   discussion. At the end, it's a cell containing a table, not a splitted
 #   cell...
-# - Make logging more efficient...
 # - More chars for seperators?
 # - Add max height?
