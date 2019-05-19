@@ -492,7 +492,7 @@ class Table:
         if index is None:
             index = self.row_count
         if len(data) == 0 and self.row_count == 0:
-            data.append(None)
+            data = [None]
         self._data = [*self._data[:index],
                       [_Cell(d) for d in data],
                       *self._data[index:]]
@@ -513,7 +513,7 @@ class Table:
         if self.row_count == 0 and len(data) == 0:
             self._data.append([])
         while len(data) > self.row_count:
-            self.add_row()
+            self._data.append([])
         for i in range(self.row_count):
             if i < len(data):
                 value = data[i]
@@ -666,7 +666,8 @@ class Table:
         )
         if row is None and column is None:
             T._data = [[c.copy() for c in row] for row in self.rows]
-            T._head = [h.copy() for h in self.head]
+            if self._head is not None:
+                T._head = [h.copy() for h in self.head]
         elif row is None:
             for c in column:
                 col = [r[c].copy() for r in self.rows]

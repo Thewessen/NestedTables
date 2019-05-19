@@ -2,6 +2,7 @@
 
 import unittest
 from tables import Table
+from itertools import product
 
 
 # TODO:
@@ -258,6 +259,35 @@ class TestTable(unittest.TestCase):
                 T.max_width = max_width
 
     def test_add_head(self):
+        # Starting with empty table (no head)
+        expect = [
+                (None, (0, 0)),
+                ([], (0, 0)),
+                ([''], (1, 2)),
+                ('hey', (3, 2)),
+                ('', (0, 0)),
+                ([None], (1, 2)),
+                (['']*4, (4, 2)),
+                (['']*10, (10, 2)),
+                ('helloworld', (10, 2)),
+                (['\n'], (1, 3)),
+                ('\n', (1, 3)),
+                (['\n\n\n'], (1, 5)),
+                ('\n\n\n\n\n', (5, 3))
+        ]
+        for data, (columns, lines) in expect:
+            T = Table()
+            # No row sep for testing
+            T.row_sep = ''
+            T.add_head(data=data)
+            msg = f'Not three rows, with add_head(data={data})'
+            self.assertEqual(T.row_count, 0, msg=msg)
+            msg = f'Not {columns} column, with add_head(data={data})'
+            self.assertEqual(T.column_count, columns, msg=msg)
+            msg = f'Not {columns} column head, with add_head(data={data})'
+            self.assertEqual(len(T._head), columns, msg=msg)
+            msg = f'Not {lines} lines in table, with add_head(data={data})'
+            self.assertEqual(len(str(T).splitlines()), lines, msg=msg)
         # Starting with three columns and three rows (no head)
         expect = [
                 (None, (3, 5)),
@@ -296,6 +326,33 @@ class TestTable(unittest.TestCase):
                         T.add_head(data=x)
 
     def test_add_row(self):
+        # Starting with empty Table
+        expect = [
+                (None, (1, 1, 1)),
+                ([], (1, 1, 1)),
+                ([''], (1, 1, 1)),
+                ('hey', (1, 3, 1)),
+                ('', (1, 1, 1)),
+                ([None], (1, 1, 1)),
+                (['']*4, (1, 4, 1)),
+                (['']*10, (1, 10, 1)),
+                ('helloworld', (1, 10, 1)),
+                (['\n'], (1, 1, 2)),
+                ('\n', (1, 1, 2)),
+                (['\n\n\n'], (1, 1, 4)),
+                ('\n\n\n\n\n', (1, 5, 2))
+        ]
+        for data, (rows, columns, lines) in expect:
+            T = Table()
+            # No row sep for testing
+            T.row_sep = ''
+            T.add_row(data=data)
+            msg = f'Not {rows} rows, with add_row(data={data})'
+            self.assertEqual(T.row_count, rows, msg=msg)
+            msg = f'Not {columns} columns, with add_row(data={data})'
+            self.assertEqual(T.column_count, columns, msg=msg)
+            msg = f'Not {lines} lines in table, with add_row(data={data})'
+            self.assertEqual(len(str(T).splitlines()), lines, msg=msg)
         # Starting with three rows and three columns
         expect = [
                 (None, (4, 3, 4)),
@@ -317,11 +374,11 @@ class TestTable(unittest.TestCase):
             # No row sep for testing
             T.row_sep = ''
             T.add_row(data=data)
-            msg = f'Not {rows} rows, with add_head(data={data})'
+            msg = f'Not {rows} rows, with add_row(data={data})'
             self.assertEqual(T.row_count, rows, msg=msg)
-            msg = f'Not {columns} columns, with add_head(data={data})'
+            msg = f'Not {columns} columns, with add_row(data={data})'
             self.assertEqual(T.column_count, columns, msg=msg)
-            msg = f'Not {lines} lines in table, with add_head(data={data})'
+            msg = f'Not {lines} lines in table, with add_row(data={data})'
             self.assertEqual(len(str(T).splitlines()), lines, msg=msg)
         for k, v in self.types.items():
             if k != 'single_iter' and k != 'double_iter' and k != 'str':
@@ -332,6 +389,61 @@ class TestTable(unittest.TestCase):
                         T.add_row(data=x)
 
     def test_add_column(self):
+        # Starting with empty table
+        expect = [
+                (None, (1, 1, 1)),
+                ([], (1, 1, 1)),
+                ([''], (1, 1, 1)),
+                ('hey', (3, 1, 3)),
+                ('', (1, 1, 1)),
+                ([None], (1, 1, 1)),
+                (['']*4, (4, 1, 4)),
+                (['']*10, (10, 1, 10)),
+                ('helloworld', (10, 1, 10)),
+                (['\n'], (1, 1, 2)),
+                ('\n', (1, 1, 2)),
+                (['\n\n\n'], (1, 1, 4)),
+                ('\n\n\n\n\n', (5, 1, 10))
+        ]
+        for data, (rows, columns, lines) in expect:
+            T = Table()
+            # No row sep for testing
+            T.row_sep = ''
+            T.add_column(data=data)
+            msg = f'Not {rows} rows, with data={data}'
+            self.assertEqual(T.row_count, rows, msg=msg)
+            msg = f'Not {columns} columns, with data={data}'
+            self.assertEqual(T.column_count, columns, msg=msg)
+            msg = f'Not {lines} lines in table, with data={data}'
+            self.assertEqual(len(str(T).splitlines()), lines, msg=msg)
+        expect_width_head = [
+                (None, None, (1, 1, 1)),
+                ([], [], (1, 1, 3)),
+                ([''], [''], (1, 1, 3)),
+                ('hey', 'hey', (3, 1, 5)),
+                ('', '', (1, 1, 3)),
+                ([None], [None], (1, 1, 3)),
+                (['']*4, ['']*4, (4, 1, 6)),
+                (['']*10, ['']*10, (10, 1, 12)),
+                ('helloworld', 'helloworld', (10, 1, 12)),
+                (['\n'], ['\n'], (1, 1, 4)),
+                ('\n', '\n', (1, 1, 5)),
+                (['\n\n\n'], ['\n\n\n'], (1, 1, 6)),
+                ('\n\n\n\n\n', '\n\n\n\n\n', (5, 1, 17))
+        ]
+        for (data, head, (rows, columns, lines)) in expect_width_head:
+            T = Table()
+            # No row sep for testing
+            T.row_sep = ''
+            T.add_column(data=data, head=head)
+            msg = f'Not {rows} rows, with data={data},head={head}'
+            self.assertEqual(T.row_count, rows, msg=msg)
+            msg = (f'Not {columns} columns, with '
+                   f'data={data},head={head}')
+            self.assertEqual(T.column_count, columns, msg=msg)
+            msg = (f'Not {lines} lines in table, with '
+                   f'data={data},head={head}')
+            self.assertEqual(len(str(T).splitlines()), lines, msg=msg)
         # Starting with three rows and three columns
         expect = [
                 (None, (3, 4, 3)),
@@ -485,7 +597,7 @@ class TestTable(unittest.TestCase):
 
     def test_remove_column(self):
         # TODO: Make sure the proper column is removed!
-        # Starting with three columns and three columns
+        # Starting with three rows and three columns
         removehead_expect = [
                 (None, (3, 2, 3)),
                 (0, (3, 2, 3)),
@@ -541,6 +653,52 @@ class TestTable(unittest.TestCase):
                     with self.assertRaises((ValueError, TypeError),
                                            msg='index={x}'):
                         T.remove_column(index=x)
+
+    def test_copy(self):
+        for v in self.types.values():
+            for x in v:
+                T = Table(rows=2, columns=2, fill=x)
+                for (col, row) in product([None, 0, 1], repeat=2):
+                    C = T.copy(row=row, column=col)
+                    self.assertIsNot(
+                        T, C,
+                        msg=f'Tables not a copy for fill={x}'
+                    )
+                    if col is None:
+                        columns = 2
+                    else:
+                        columns = 1
+                    if row is None:
+                        rows = 2
+                    else:
+                        rows = 1
+                    msg = (f'Not {rows} rows, with '
+                           f'copy(row={row},column={col})')
+                    self.assertEqual(C.row_count, rows, msg=msg)
+                    msg = (f'Not {columns} columns, with '
+                           f'copy(row={row},column={col})')
+                    self.assertEqual(C.column_count, columns, msg=msg)
+                    for (t, c) in zip(T.cells, C.cells):
+                        self.assertIsNot(
+                            t, c,
+                            msg=f'Cells {t} and {c} not a copy for fill={x}'
+                        )
+                        # Mutable objects
+                        # Shallow search
+                        # TODO deep search
+                        if not isinstance(
+                                    t.value,
+                                    (str, int, bool, float, tuple)
+                        ):
+                            if not isinstance(
+                                    c.value,
+                                    (str, int, bool, float, tuple)
+                            ):
+                                self.assertIsNot(
+                                    t.value, c.value,
+                                    msg=(f'Cellvalues {t} and {c}'
+                                         f' not a copy for fill={x}')
+                                )
 
 
 if __name__ == '__main__':
