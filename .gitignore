@@ -2,6 +2,5 @@
 *.vim
 *.sw?
 *.py[cod]
-*.egg-info
 __pycache__/
 **/__pycache__/
