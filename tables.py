@@ -718,8 +718,50 @@ class Table:
         return string
 
 
+class GenTable:
+    def __init__(self, data=None, columns=0, rows=0):
+        if isinstance(data, dict):
+            raise TypeError('Dicts not supported as data value')
+        if rows < 0:
+            raise ValueError("Number of rows can't be less then zero.")
+        if columns < 0:
+            raise ValueError("Number of columns can't be less then zero.")
+        if columns != 0 and rows == 0:
+            rows = 1
+        elif rows != 0 and columns == 0:
+            columns = 1
+        if data is None:
+            self._data = self._gen_table([[None] * columns] * rows)
+        print(list(self._data))
+
+    def create_list_data(fn):
+        def wrap_fn(self, *args, **kwargs):
+            def create_list(value):
+                if not isinstance(value, (list, tuple, set)):
+                    return [value]
+                else:
+                    return value
+            args = list(map(create_list, args))
+            for k, v in kwargs.items():
+                kwargs[k] = create_list(v)
+            fn(self, *args, **kwargs)
+
+        return wrap_fn
+
+    @create_list_data
+    def _gen_cells(self, columns):
+        for cell in columns:
+            yield cell
+
+    def _gen_table(self, data):
+        for d in data:
+            yield self._gen_cells(d)
+
+
 if __name__ == '__main__':
-    print('This module is supposed to be imported!')
+    # print('This module is supposed to be imported!')
+    G = GenTable(columns=3, rows=3)
+
 # TODO:
 # - Except any data=... on add_*(), but convert too list if not a list?
 # - Make logging more efficient...
