@@ -420,35 +420,11 @@ class Table:
                     + len(self.col_sep)
                     * (self.column_count - 1))
 
-    def _add_data(add_func):
-        """
-        Decorator for add_*() functions. Checks if keyword arguments are
-        valid. Sets default of keyword arguments. And, in the end, makes sure
-        all rows and columns in the tabel are equal in size.
-        """
-        if add_func.__name__ not in ('add_row', 'add_column', 'add_head'):
-            raise TypeError((f'Decorator _add_data does not support '
-                             f'{add_func.__name__}'))
-
-        def wrap_add(self, *args, **kwargs):
-            # TODO This is dangerous...
-            # What if len(args) == 1, and 'data' in kwargs??
-            if len(args) == 1:
-                (kwargs['data'],) = args
-            elif add_func.__name__ in ('add_row', 'add_head'):
-                if len(args) == 2:
-                    (kwargs['index'], kwargs['data']) = args
-            elif add_func.__name__ == 'add_column':
-                if len(args) == 2:
-                    (kwargs['head'], kwargs['data']) = args
-                elif len(args) == 3:
-                    (kwargs['index'], kwargs['head'], kwargs['data']) = args
-            if 'data' in kwargs and kwargs['data'] is None\
-                    or 'data' not in kwargs:
-                kwargs['data'] = []
-            if not isinstance(kwargs['data'], (list, str)):
-                raise TypeError(f"data={kwargs['data']} not supported.")
-            add_func(self, **kwargs)
+    def _keep_table_dimensions(fn):
+        """(Decorator) Make sure the rows and columns stay equal in size"""
+        def wrap_fn(self, *args, **kwargs):
+            fn(self, *args, **kwargs)
+            # Make sure table stays equal in size
             if self._head is None:
                 m = max(len(r) for r in self.rows)
                 for row in self.rows:
@@ -459,13 +435,63 @@ class Table:
                 for row in [self._head, *self.rows]:
                     while len(row) < m:
                         row.append(_Cell(None))
-        return wrap_add
+        # Keep the name of the original function for verification
+        wrap_fn.__name__ = fn.__name__
+        return wrap_fn
 
-    @_add_data
+    def _convert_args_to_kwargs(fn):
+        """(Decorator) Different order for args then kwargs suggest."""
+        def wrap_fn(self, *args, **kwargs):
+            # TODO This is dangerous...
+            # What if len(args) == 1, and 'data' in kwargs??
+            if len(args) == 1:
+                if 'data' not in kwargs:
+                    (kwargs['data'],) = args
+                elif 'head' not in kwargs:
+                    (kwargs['head'],) = args
+                elif 'index' not in kwargs:
+                    (kwargs['index'],) = args
+            elif fn.__name__ in ('add_row', 'add_head'):
+                if len(args) == 2:
+                    (kwargs['index'], kwargs['data']) = args
+            elif fn.__name__ == 'add_column':
+                if len(args) == 2:
+                    (kwargs['head'], kwargs['data']) = args
+                elif len(args) == 3:
+                    (kwargs['index'], kwargs['head'], kwargs['data']) = args
+            fn(self, **kwargs)
+        # Keep the name of the original function for verification
+        wrap_fn.__name__ = fn.__name__
+        return wrap_fn
+
+    def _verify_data(add_func):
+        """
+        Decorator for add_*() functions. Checks if keyword arguments are
+        valid. Sets default of keyword arguments.
+        """
+        if add_func.__name__ not in ('add_row', 'add_column', 'add_head'):
+            raise TypeError((f'Decorator _verify_data does not support '
+                             f'{add_func.__name__}'))
+
+        def wrap_verify(self, *args, **kwargs):
+            if 'data' in kwargs and kwargs['data'] is None\
+                    or 'data' not in kwargs:
+                kwargs['data'] = []
+            if not isinstance(kwargs['data'], (list, tuple, set, str)):
+                raise TypeError(f"data={kwargs['data']} not supported.")
+            # Call original function
+            add_func(self, **kwargs)
+        # Keep the name of the original function for verification
+        wrap_verify.__name__ = add_func.__name__
+        return wrap_verify
+
+    @_convert_args_to_kwargs
+    @_verify_data
+    @_keep_table_dimensions
     def add_head(self, index=None, data=None):
         """
         Add a list of column headings to the table.
-        Custom decorator: @_add_data (see docstring)
+        Custom decorator: @_verify_data (see docstring)
         Keyword arguments:
         index   -- Index from where the data starts replacing the current head.
                    (default None: end of head)
@@ -479,11 +505,13 @@ class Table:
                       *[_Cell(d) for d in data],
                       *self._head[index+len(data):]]
 
-    @_add_data
+    @_convert_args_to_kwargs
+    @_verify_data
+    @_keep_table_dimensions
     def add_row(self, index=None, data=None):
         """
         Add a list of row data to the table.
-        Custom decorator: @_add_data (see docstring)
+        Custom decorator: @_verify_data (see docstring)
         Keyword arguments:
         data    -- List containing cell data (default None)
         index   -- The position of the newly added row starting at 0.
@@ -497,11 +525,13 @@ class Table:
                       [_Cell(d) for d in data],
                       *self._data[index:]]
 
-    @_add_data
+    @_convert_args_to_kwargs
+    @_verify_data
+    @_keep_table_dimensions
     def add_column(self, index=None, head=None, data=None):
         """
         Add a list of column data to the table.
-        Custom decorator: @_add_data (see docstring)
+        Custom decorator: @_verify_data (see docstring)
         Keyword arguments:
         data    -- List containing cell data (default None).
         head    -- The table heading of this column (default None).
@@ -535,11 +565,11 @@ class Table:
     def _remove_data(remove_func):
         """
         Decorator for remove_*() functions. Checks if keyword arguments are
-        valid. Sets default of keyword arguments.
+        valid. Sets different order of (non-keyword) arguments.
         """
         name = remove_func.__name__
         if name not in ('remove_row', 'remove_column', 'remove_head'):
-            raise TypeError(f'Decorator _add_data does not support {name}')
+            raise TypeError(f'Decorator _remove_data does not support {name}')
 
         def wrap_remove(self, *args, **kwargs):
             if len(args) > 0:
@@ -551,8 +581,7 @@ class Table:
             if index is not None:
                 maximum = {
                     'remove_head':
-                        len(self._head) if self._head is not None
-                        else 0,
+                        len(self._head) if self._head is not None else 0,
                     'remove_row': self.row_count,
                     'remove_column': self.column_count
                 }[name]
