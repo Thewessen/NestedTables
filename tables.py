@@ -719,7 +719,7 @@ class Table:
 
 
 class GenTable:
-    def __init__(self, data=None, columns=0, rows=0):
+    def __init__(self, data=None, columns=0, rows=0, col_sep='|'):
         if isinstance(data, dict):
             raise TypeError('Dicts not supported as data value')
         if rows < 0:
@@ -732,19 +732,28 @@ class GenTable:
             columns = 1
         if data is None:
             self._data = self._gen_table([[None] * columns] * rows)
-        print(list(self._data))
+        else:
+            self._data = self._gen_table(data)
+        self._col_sep = col_sep
+
+    def __str__(self):
+        p = ''
+        for line in self._gen_lines():
+            p += line + '\n'
+        return p.strip('\n')
 
     def create_list_data(fn):
         def wrap_fn(self, *args, **kwargs):
             def create_list(value):
-                if not isinstance(value, (list, tuple, set)):
+                # Not  foolproof in case of dicts
+                if not hasattr(value, '__iter__'):
                     return [value]
                 else:
                     return value
             args = list(map(create_list, args))
             for k, v in kwargs.items():
                 kwargs[k] = create_list(v)
-            fn(self, *args, **kwargs)
+            return fn(self, *args, **kwargs)
 
         return wrap_fn
 
@@ -757,10 +766,21 @@ class GenTable:
         for d in data:
             yield self._gen_cells(d)
 
+    def _gen_lines(self):
+        for row in self._data:
+            line = ''
+            sep = f' {self._col_sep} '
+            for cell in row:
+                line += str(cell)
+                line += sep
+            yield line.strip(sep)
+
 
 if __name__ == '__main__':
     # print('This module is supposed to be imported!')
     G = GenTable(columns=3, rows=3)
+    print(G)
+
 
 # TODO:
 # - Except any data=... on add_*(), but convert too list if not a list?
