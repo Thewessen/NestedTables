@@ -6,6 +6,7 @@ Exports class Table()
 
 
 import copy
+from functools import wraps
 from itertools import zip_longest
 
 __all__ = ['Table']
@@ -422,9 +423,9 @@ class Table:
 
     def _keep_table_dimensions(fn):
         """(Decorator) Make sure the rows and columns stay equal in size"""
+        @wraps(fn)
         def wrap_fn(self, *args, **kwargs):
             fn(self, *args, **kwargs)
-            # Make sure table stays equal in size
             if self._head is None:
                 m = max(len(r) for r in self.rows)
                 for row in self.rows:
@@ -435,57 +436,48 @@ class Table:
                 for row in [self._head, *self.rows]:
                     while len(row) < m:
                         row.append(_Cell(None))
-        # Keep the name of the original function for verification
-        wrap_fn.__name__ = fn.__name__
         return wrap_fn
 
-    def _convert_args_to_kwargs(fn):
-        """(Decorator) Different order for args then kwargs suggest."""
-        def wrap_fn(self, *args, **kwargs):
-            # TODO This is dangerous...
+    def _args_to_kwargs(*fargs):
+        def _convert_args_to_kwargs(fn):
+            """(Decorator) Different order for args then kwargs suggest."""
+            # Example: fn(index, head, data)
+            # nr. of args
+            # 1 => fn(data)? -> fn(head, data=)? -> fn(index, head=, data=)
+            # 2 => fn(head, data)? -> fn(index, head, data=)
+            # 3 => fn(index, head, data)
             # What if len(args) == 1, and 'data' in kwargs??
-            if len(args) == 1:
-                if 'data' not in kwargs:
-                    (kwargs['data'],) = args
-                elif 'head' not in kwargs:
-                    (kwargs['head'],) = args
-                elif 'index' not in kwargs:
-                    (kwargs['index'],) = args
-            elif fn.__name__ in ('add_row', 'add_head'):
-                if len(args) == 2:
-                    (kwargs['index'], kwargs['data']) = args
-            elif fn.__name__ == 'add_column':
-                if len(args) == 2:
-                    (kwargs['head'], kwargs['data']) = args
-                elif len(args) == 3:
-                    (kwargs['index'], kwargs['head'], kwargs['data']) = args
-            fn(self, **kwargs)
-        # Keep the name of the original function for verification
-        wrap_fn.__name__ = fn.__name__
-        return wrap_fn
+            # TODO: Make failproof!!
+            @wraps(fn)
+            def wrap_fn(self, *args, **kwargs):
+                for i in range(len(args), 0, -1):
+                    for fa in fargs:
+                        if fa not in kwargs:
+                            kwargs[fa] = args[i]
+                fn(self, **kwargs)
+            return wrap_fn
+        return _convert_args_to_kwargs
 
-    def _verify_data(add_func):
+    def _verify_data(fn):
         """
         Decorator for add_*() functions. Checks if keyword arguments are
         valid. Sets default of keyword arguments.
         """
-        if add_func.__name__ not in ('add_row', 'add_column', 'add_head'):
+        if fn.__name__ not in ('add_row', 'add_column', 'add_head'):
             raise TypeError((f'Decorator _verify_data does not support '
-                             f'{add_func.__name__}'))
+                             f'{fn.__name__}'))
 
+        @wraps(fn)
         def wrap_verify(self, *args, **kwargs):
             if 'data' in kwargs and kwargs['data'] is None\
                     or 'data' not in kwargs:
                 kwargs['data'] = []
             if not isinstance(kwargs['data'], (list, tuple, set, str)):
                 raise TypeError(f"data={kwargs['data']} not supported.")
-            # Call original function
-            add_func(self, **kwargs)
-        # Keep the name of the original function for verification
-        wrap_verify.__name__ = add_func.__name__
+            fn(self, **kwargs)
         return wrap_verify
 
-    @_convert_args_to_kwargs
+    @_args_to_kwargs('data', 'index')
     @_verify_data
     @_keep_table_dimensions
     def add_head(self, index=None, data=None):
@@ -505,7 +497,7 @@ class Table:
                       *[_Cell(d) for d in data],
                       *self._head[index+len(data):]]
 
-    @_convert_args_to_kwargs
+    @_args_to_kwargs('data', 'index')
     @_verify_data
     @_keep_table_dimensions
     def add_row(self, index=None, data=None):
@@ -525,7 +517,7 @@ class Table:
                       [_Cell(d) for d in data],
                       *self._data[index:]]
 
-    @_convert_args_to_kwargs
+    @_args_to_kwargs('data', 'head', 'index')
     @_verify_data
     @_keep_table_dimensions
     def add_column(self, index=None, head=None, data=None):
@@ -562,15 +554,16 @@ class Table:
             self.add_head()
             self._head[index].value = head
 
-    def _remove_data(remove_func):
+    def _remove_data(fn):
         """
         Decorator for remove_*() functions. Checks if keyword arguments are
         valid. Sets different order of (non-keyword) arguments.
         """
-        name = remove_func.__name__
+        name = fn.__name__
         if name not in ('remove_row', 'remove_column', 'remove_head'):
             raise TypeError(f'Decorator _remove_data does not support {name}')
 
+        @wraps(fn)
         def wrap_remove(self, *args, **kwargs):
             if len(args) > 0:
                 index = args[0]
@@ -594,7 +587,7 @@ class Table:
                 if isinstance(index, list):
                     index = set(index)
                 kwargs['index'] = index
-            remove_func(self, **kwargs)
+            fn(self, **kwargs)
         return wrap_remove
 
     @_remove_data
@@ -661,30 +654,30 @@ class Table:
                 for row in self.rows:
                     row[i] = _Cell(None)
 
-    def copy(self, row=None, column=None):
+    def copy(self, rows=None, columns=None):
         """
         Returns an instance of the Table containing the heading and
         Cell(s) from the current Table.
-        Note: If both row and column are ommited, return an instance of
+        Note: If both rows and columns are ommited, return an instance of
         the whole Table.
         Keyword arguments:
-        row     -- Integer, range or list of the corresponding row(s)
+        rows     -- Integer, range or list of the corresponding row(s)
                    (default None).
-        column  -- Integer, range or list of the corresponding column(s)
+        columns  -- Integer, range or list of the corresponding column(s)
                    (default None).
         Note: index start at 0!
         """
-        if isinstance(row, list):
-            row = set(row)
-        if isinstance(column, list):
-            column = set(column)
-        if isinstance(row, int):
-            row = [row]
-        if isinstance(column, int):
-            column = [column]
-        if row is not None and max(row) >= self.row_count:
+        if isinstance(rows, list):
+            rows = set(rows)
+        if isinstance(columns, list):
+            columns = set(columns)
+        if isinstance(rows, int):
+            rows = [rows]
+        if isinstance(columns, int):
+            columns = [columns]
+        if rows is not None and max(rows) >= self.row_count:
             raise IndexError('Exceeding max rows.\n' + repr(self))
-        if column is not None and max(column) >= self.column_count:
+        if columns is not None and max(columns) >= self.column_count:
             raise IndexError('Exceeding max columns.\n' + repr(self))
         T = Table(
                 max_width=self.max_width,
@@ -693,28 +686,28 @@ class Table:
                 row_sep=self.row_sep,
                 col_sep=self.col_sep[:1]
         )
-        if row is None and column is None:
+        if rows is None and columns is None:
             T._data = [[c.copy() for c in row] for row in self.rows]
             if self._head is not None:
                 T._head = [h.copy() for h in self.head]
-        elif row is None:
-            for c in column:
+        elif rows is None:
+            for c in columns:
                 col = [r[c].copy() for r in self.rows]
                 head = None
                 if self._head is not None:
                     head = self._head[c].copy()
                 T.add_column(head=head, data=col)
-        elif column is None:
-            for r in row:
+        elif columns is None:
+            for r in rows:
                 T.add_row(data=[c.copy() for c in self._data[r]])
             if self._head is not None:
                 T.add_head(data=[c.copy() for c in self.head])
         else:
             T._data = []
-            for r in row:
-                T._data.append([self._data[r][c].copy() for c in column])
+            for r in rows:
+                T._data.append([self._data[r][c].copy() for c in columns])
             if self._head is not None:
-                T.add_head(data=[self._head[c].copy() for c in column])
+                T.add_head(data=[self._head[c].copy() for c in columns])
         return T
 
     def log(self, row=None, column=None):

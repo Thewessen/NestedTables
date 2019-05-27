@@ -659,7 +659,7 @@ class TestTable(unittest.TestCase):
             for x in v:
                 T = Table(rows=2, columns=2, fill=x)
                 for (col, row) in product([None, 0, 1], repeat=2):
-                    C = T.copy(row=row, column=col)
+                    C = T.copy(rows=row, columns=col)
                     self.assertIsNot(
                         T, C,
                         msg=f'Tables not a copy for fill={x}'
@@ -673,10 +673,10 @@ class TestTable(unittest.TestCase):
                     else:
                         rows = 1
                     msg = (f'Not {rows} rows, with '
-                           f'copy(row={row},column={col})')
+                           f'copy(rows={row},columns={col})')
                     self.assertEqual(C.row_count, rows, msg=msg)
                     msg = (f'Not {columns} columns, with '
-                           f'copy(row={row},column={col})')
+                           f'copy(rows={row},columns={col})')
                     self.assertEqual(C.column_count, columns, msg=msg)
                     for (t, c) in zip(T.cells, C.cells):
                         self.assertIsNot(
