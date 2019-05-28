@@ -667,6 +667,11 @@ class Table:
                    (default None).
         Note: index start at 0!
         """
+        if isinstance(rows, dict):
+            raise TypeError('Dicts are not supported for copying rows')
+        if isinstance(columns, dict):
+            raise TypeError('Dicts are not supported for copying columns')
+        # Make sure rows and columns list contain no duplicates
         if isinstance(rows, list):
             rows = set(rows)
         if isinstance(columns, list):
